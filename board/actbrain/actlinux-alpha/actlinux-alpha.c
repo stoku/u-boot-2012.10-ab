@@ -34,7 +34,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
-	puts("BOARD: Act Brain XXX\n");
+	puts("BOARD: Act Brain Actlinux-Alpha\n");
 	return 0;
 }
 
