@@ -377,7 +377,7 @@
  * when no character is read on the console interface
  * within "Boot Delay" after reset.
  */
-#define CONFIG_BOOTCOMMAND	"bootm a0100000"
+#define CONFIG_BOOTCOMMAND	"bootm a0200000"
 
 /*
  * This can be used to pass arguments to the bootm
