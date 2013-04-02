@@ -61,8 +61,6 @@ FRQCR2_D:       .long   0x00000000
 
 init_lbsc:
 
-        write32 CS0CTRL_A,      CS0CTRL_D
-        write32 CS0CTRL2_A,     CS0CTRL2_D
         write32 CSPWCR0_A,      CSPWCR0_D
         write32 CSWCR0_A,       CSWCR0_D
 
@@ -71,13 +69,9 @@ init_lbsc:
 
         .align  4
 
-CS0CTRL_A:      .long   0xFF800200
-CS0CTRL2_A:     .long   0xFF800220
 CSWCR0_A:       .long   0xFF800230
 CSPWCR0_A:      .long   0xFF800280
 
-CS0CTRL_D:      .long   0x00000020
-CS0CTRL2_D:     .long   0x00004000 /* Flash 16MB */
 #if defined(CONFIG_400MHZ_MODE)
 CSWCR0_D:       .long   0x02120114
 #else
