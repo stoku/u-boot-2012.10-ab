@@ -16,7 +16,6 @@
 #include <common.h>
 #include <asm/processor.h>
 #include <asm/io.h>
-#include <i2c.h>
 #include <net.h>
 
 #define WRITE_PFC(d, a)	\
@@ -106,18 +105,14 @@ int board_init(void)
 
 int board_late_init(void)
 {
-	u8 mac[6];
-
-	/* Read Mac Address and set*/
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-	i2c_set_bus_num(CONFIG_SYS_I2C_MODULE);
-
-	/* Read MAC address */
-	i2c_read(0x50, 0x0, 0, mac, 6);
-
-	if (is_valid_ether_addr(mac))
-		eth_setenv_enetaddr("ethaddr", mac);
-
+#ifdef CONFIG_RANDOM_MACADDR
+	u8 ethaddr[6];
+	if (!eth_getenv_enetaddr("ethaddr", ethaddr)) {
+		eth_random_enetaddr(ethaddr);
+		if (eth_setenv_enetaddr("ethaddr", ethaddr))
+			printf("Failed to set ethernet address\n");
+	}
+#endif
 	return 0;
 }
 

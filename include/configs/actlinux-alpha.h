@@ -218,6 +218,9 @@
 /* Enable the multi bus support */
 #define CONFIG_BITBANGMII_MULTI
 
+/* Enable random MAC address generation */
+#define CONFIG_RANDOM_MACADDR
+
 /* Support for Renesas on-chip Ethernet controller */
 #define CONFIG_SH_ETHER			1
 
