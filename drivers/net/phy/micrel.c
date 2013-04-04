@@ -25,35 +25,6 @@
 #include <micrel.h>
 #include <phy.h>
 
-static struct phy_driver KSZ804_driver = {
-	.name = "Micrel KSZ804",
-	.uid = 0x221510,
-	.mask = 0xfffff0,
-	.features = PHY_BASIC_FEATURES,
-	.config = &genphy_config,
-	.startup = &genphy_startup,
-	.shutdown = &genphy_shutdown,
-};
-
-#ifndef CONFIG_PHY_MICREL_KSZ9021
-/*
- * I can't believe Micrel used the exact same part number
- * for the KSZ9021
- * Shame Micrel, Shame!!!!!
- */
-static struct phy_driver KS8721_driver = {
-	.name = "Micrel KS8721BL",
-	.uid = 0x221610,
-	.mask = 0xfffff0,
-	.features = PHY_BASIC_FEATURES,
-	.config = &genphy_config,
-	.startup = &genphy_startup,
-	.shutdown = &genphy_shutdown,
-};
-#endif
-
-#ifdef CONFIG_PHY_MICREL_KSZ9021
-/* ksz9021 PHY Registers */
 #define MII_KSZ9021_EXTENDED_CTRL	0x0b
 #define MII_KSZ9021_EXTENDED_DATAW	0x0c
 #define MII_KSZ9021_EXTENDED_DATAR	0x0d
@@ -126,24 +97,51 @@ static int ksz9021_startup(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver ksz9021_driver = {
-	.name = "Micrel ksz9021",
+static struct phy_driver KSZ8041_driver = {
+	.name = "Micrel KSZ8041",
+	.uid = 0x221510,
+	.mask = 0xfffff0,
+	.features = PHY_BASIC_FEATURES,
+	.config = &genphy_config,
+	.startup = &genphy_startup,
+	.shutdown = &genphy_shutdown,
+};
+
+static struct phy_driver KSZ8001_driver = {
+	.name = "Micrel KSZ8001 or KSZ8721",
+	.uid = 0x22161A,
+	.mask = 0xffffff,
+	.features = PHY_BASIC_FEATURES,
+	.config = &genphy_config,
+	.startup = &genphy_startup,
+	.shutdown = &genphy_shutdown,
+};
+
+static struct phy_driver KSZ9021_driver = {
+	.name = "Micrel KSZ9021",
 	.uid  = 0x221610,
+	.mask = 0xfffffe,
+	.features = PHY_GBIT_FEATURES,
+	.config = &ksz9021_config,
+	.startup = &ksz9021_startup,
+	.shutdown = &genphy_shutdown,
+};
+
+static struct phy_driver KSZ9031_driver = {
+	.name = "Micrel KSZ9031",
+	.uid = 0x221620,
 	.mask = 0xfffff0,
 	.features = PHY_GBIT_FEATURES,
 	.config = &ksz9021_config,
 	.startup = &ksz9021_startup,
 	.shutdown = &genphy_shutdown,
 };
-#endif
 
 int phy_micrel_init(void)
 {
-	phy_register(&KSZ804_driver);
-#ifdef CONFIG_PHY_MICREL_KSZ9021
-	phy_register(&ksz9021_driver);
-#else
-	phy_register(&KS8721_driver);
-#endif
+	phy_register(&KSZ8041_driver);
+	phy_register(&KSZ8001_driver);
+	phy_register(&KSZ9021_driver);
+	phy_register(&KSZ9031_driver);
 	return 0;
 }
