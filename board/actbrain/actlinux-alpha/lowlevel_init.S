@@ -315,6 +315,6 @@ lowlevel_activate:
         .align  4
 
 CCR_A:          .long   CCR
-CCR_D:          .long   CCR_CACHE_INIT
+CCR_D:          .long   0x0000090B /* Write Through for ethernet */
 SR_MASK_D:      .long   0xEFFFFF0F
 
