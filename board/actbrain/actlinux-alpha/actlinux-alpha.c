@@ -81,8 +81,8 @@ int board_init(void)
 	/* DU0_HSYNC, DU0_VSYNC, DU0_DISP */
 	WRITE_PFC(0x2EFFFFFFu, GPSR3);
 
-	/* SCL0, SDA0, PENC0/1, USB_OVC0/1, RX4_D, TX4_D */
-	WRITE_PFC(0xFF000000u, GPSR4);
+	/* SCL0, SDA0, PENC0/1, RX4_D, TX4_D */
+	WRITE_PFC(0xCF000000u, GPSR4);
 
 	/* IRQ0-3_B */
 	WRITE_PFC(0x0000040Du, GPSR5);
@@ -105,14 +105,36 @@ int board_init(void)
 
 int board_late_init(void)
 {
+	const char *ethaddr, *bootargs, *var;
+
+	ethaddr = getenv("ethaddr");
+	bootargs = getenv("bootargs");
+	var = " eth=";
+
 #ifdef CONFIG_RANDOM_MACADDR
-	u8 ethaddr[6];
-	if (!eth_getenv_enetaddr("ethaddr", ethaddr)) {
-		eth_random_enetaddr(ethaddr);
-		if (eth_setenv_enetaddr("ethaddr", ethaddr))
-			printf("Failed to set ethernet address\n");
+	if (!ethaddr) {
+		u8 mac[6];
+		eth_random_enetaddr(mac);
+		if (eth_setenv_enetaddr("ethaddr", mac))
+			printf("Warning: failed to set ethernet address.\n");
+		else
+			ethaddr = getenv("ethaddr");
 	}
 #endif
+	if (ethaddr && bootargs && !strstr(bootargs, var)) {
+		char *buf;
+
+		buf = malloc(strlen(bootargs) + strlen(var) +
+				strlen(ethaddr) + 1);
+		if (!buf) {
+			printf("Warning: failed to alloc memory.\n");
+		} else {
+			sprintf(buf, "%s%s%s", bootargs, var, ethaddr);
+			if (setenv("bootargs", buf))
+				printf("Warning: failed to set bootargs.\n");
+			free(buf);
+		}
+	}
 	return 0;
 }
 

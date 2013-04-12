@@ -261,7 +261,7 @@
 #define CONFIG_SH_I2C_BASE1	0xFFC71000
 
 /******************************************************************************
- * Monitor
+ * U-boot
  */
 
 /*
@@ -387,7 +387,7 @@
  * command. The value of CONFIG_BOOTARGS goes into the
  * environment value "bootargs".
  */
-#define CONFIG_BOOTARGS		"console=ttySC4,115200 root=/dev/ram"
+#define CONFIG_BOOTARGS		"console=ttySC4,115200 root=/dev/ram mem=64M"
 
 /*
  * Buffer size for Boot Arguments which are passed to
@@ -442,6 +442,8 @@
 #define CONFIG_CMD_ENV
 /* saveenv */
 #define CONFIG_CMD_SAVEENV
+/* run */
+#define CONFIG_CMD_RUN
 
 #endif /* __ACTLINUX_ALPHA_H */
 
