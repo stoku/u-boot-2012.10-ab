@@ -29,6 +29,9 @@
 #define MSTPSR1_GETHER	(1 << 14)
 #define MSTPSR1_DU	(1 << 3)
 
+#define MAHR0		(0xFEE005C0)
+#define MALR0		(0xFEE005C8)
+
 DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
@@ -105,36 +108,16 @@ int board_init(void)
 
 int board_late_init(void)
 {
-	const char *ethaddr, *bootargs, *var;
+	u8 mac[6];
 
-	ethaddr = getenv("ethaddr");
-	bootargs = getenv("bootargs");
-	var = " eth=";
-
-#ifdef CONFIG_RANDOM_MACADDR
-	if (!ethaddr) {
-		u8 mac[6];
+	if (!eth_getenv_enetaddr("ethaddr", mac)) {
 		eth_random_enetaddr(mac);
-		if (eth_setenv_enetaddr("ethaddr", mac))
-			printf("Warning: failed to set ethernet address.\n");
-		else
-			ethaddr = getenv("ethaddr");
+		eth_setenv_enetaddr("ethaddr", mac);
 	}
-#endif
-	if (ethaddr && bootargs && !strstr(bootargs, var)) {
-		char *buf;
+	writel(((u32)mac[0] << 24) | ((u32)mac[1] << 16) |
+		((u32)mac[2] << 8) | ((u32)mac[3] << 0), MAHR0);
+	writel(((u32)mac[4] << 8) | ((u32)mac[5] << 0), MALR0);
 
-		buf = malloc(strlen(bootargs) + strlen(var) +
-				strlen(ethaddr) + 1);
-		if (!buf) {
-			printf("Warning: failed to alloc memory.\n");
-		} else {
-			sprintf(buf, "%s%s%s", bootargs, var, ethaddr);
-			if (setenv("bootargs", buf))
-				printf("Warning: failed to set bootargs.\n");
-			free(buf);
-		}
-	}
 	return 0;
 }
 

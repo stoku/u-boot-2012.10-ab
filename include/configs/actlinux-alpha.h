@@ -387,7 +387,10 @@
  * command. The value of CONFIG_BOOTARGS goes into the
  * environment value "bootargs".
  */
-#define CONFIG_BOOTARGS		"console=ttySC4,115200 root=/dev/ram mem=64M"
+#define CONFIG_BOOTARGS		"console=ttySC4,115200 " \
+				"root=/dev/ram " \
+				"mem=64M " \
+				MTDPARTS_DEFAULT
 
 /*
  * Buffer size for Boot Arguments which are passed to
@@ -417,6 +420,14 @@
  * (for example, some LED's) on your board.
  */
 #undef  CONFIG_SHOW_BOOT_PROGRESS
+
+/* MTD partitions passed to Linux kernel */
+#define MTDPARTS_DEFAULT		"mtdparts=physmap-flash.0:" \
+					"256k(u-boot)ro," \
+					"256k(u-boot-env)ro," \
+					"1536k(splash)," \
+					"8m(kernel)," \
+					"-(opt)"
 
 /******************************************************************************
  * Commands
