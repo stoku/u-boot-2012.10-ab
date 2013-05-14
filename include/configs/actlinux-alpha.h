@@ -261,6 +261,14 @@
 #define CONFIG_SH_I2C_BASE1	0xFFC71000
 
 /******************************************************************************
+ * Display
+ */
+
+#define CONFIG_SH_DU
+
+#define CONFIG_DISPLAY_BG_COLOR		0x00008040 /* XRGB8888 */
+
+/******************************************************************************
  * U-boot
  */
 
@@ -389,7 +397,7 @@
  */
 #define CONFIG_BOOTARGS		"console=ttySC4,115200 " \
 				"root=/dev/ram " \
-				"mem=64M " \
+				"mem=48M " \
 				MTDPARTS_DEFAULT
 
 /*

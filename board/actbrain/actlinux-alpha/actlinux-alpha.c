@@ -24,15 +24,133 @@
 		writel(d, a); \
 	} while (0)
 
-#define MSTPCR1		(0xFFC80034)
-#define MSTPSR1		(0xFFC80044)
-#define MSTPSR1_GETHER	(1 << 14)
-#define MSTPSR1_DU	(1 << 3)
+#define MSTPCR1			(0xFFC80034)
+#define MSTPSR1			(0xFFC80044)
+#define MSTPSR1_GETHER		(1 << 14)
+#define MSTPSR1_DU		(1 << 3)
 
-#define MAHR0		(0xFEE005C0)
-#define MALR0		(0xFEE005C8)
+#define MAHR0			(0xFEE005C0)
+#define MALR0			(0xFEE005C8)
+
+#define MODEMR			(0xFFCC0020)
+#define MODEMR_ENDIAN_LITTLE	(0x01 << 8)
+
+/* DU base address */
+#define DU_BASE			(0xFFF80000)
+#define DU_REG(offset)		(DU_BASE + (offset))
+
+/* DU display control */
+#define DSYSR			DU_REG(0x0000)
+#define DSMR			DU_REG(0x0004)
+#define DSSR			DU_REG(0x0008)
+#define DSRCR			DU_REG(0x000C)
+#define DIER			DU_REG(0x0010)
+#define CPCR			DU_REG(0x0014)
+#define DPPR			DU_REG(0x0018)
+
+/* DU display timing */
+#define HDSR			DU_REG(0x0040)
+#define HDER			DU_REG(0x0044)
+#define VDSR			DU_REG(0x0048)
+#define VDER			DU_REG(0x004C)
+#define HCR			DU_REG(0x0050)
+#define HSWR			DU_REG(0x0054)
+#define VCR			DU_REG(0x0058)
+#define VSPR			DU_REG(0x005C)
+#define EQWR			DU_REG(0x0060)
+#define SPWR			DU_REG(0x0064)
+#define CLAMPSR			DU_REG(0x0070)
+#define CLAMPWR			DU_REG(0x0074)
+#define DESR			DU_REG(0x0078)
+#define DEWR			DU_REG(0x007C)
+
+/* DU display attributes */
+#define DOOR			DU_REG(0x0090)
+#define CDER			DU_REG(0x0094)
+#define BPOR			DU_REG(0x0098)
+#define RINTOFSR		DU_REG(0x009C)
+#define COLOR_MASK		(0x00FCFCFC)
+
+/* DU display planes */
+#define DU_PLANE(i, offset)	DU_REG(((i) * 0x100) + (offset))
+#define PMR(i)			DU_PLANE(i, 0x00)
+#define PMWR(i)			DU_PLANE(i, 0x04)
+#define PALPHAR(i)		DU_PLANE(i, 0x08)
+#define PDSXR(i)		DU_PLANE(i, 0x10)
+#define PDSYR(i)		DU_PLANE(i, 0x14)
+#define PDPXR(i)		DU_PLANE(i, 0x18)
+#define PDPYR(i)		DU_PLANE(i, 0x1C)
+#define PDSA0R(i)		DU_PLANE(i, 0x20)
+#define PDSA1R(i)		DU_PLANE(i, 0x24)
+#define PDSA2R(i)		DU_PLANE(i, 0x28)
+#define PDSPXR(i)		DU_PLANE(i, 0x30)
+#define PDSPYR(i)		DU_PLANE(i, 0x34)
+#define PWASPR(i)		DU_PLANE(i, 0x38)
+#define PWAMWR(i)		DU_PLANE(i, 0x3C)
+#define PBTR(i)			DU_PLANE(i, 0x40)
+#define PTC1R(i)		DU_PLANE(i, 0x44)
+#define PTC2R(i)		DU_PLANE(i, 0x48)
+#define PMLR(i)			DU_PLANE(i, 0x50)
+#define PSWAPR(i)		DU_PLANE(i, 0x80)
+#define PDDCR(i)		DU_PLANE(i, 0x84)
+#define PDDCR2(i)		DU_PLANE(i, 0x88)
+
+/* DU external synchronization control */
+#define ESCR			DU_REG(0x10000)
+#define OTAR			DU_REG(0x10004)
 
 DECLARE_GLOBAL_DATA_PTR;
+
+void du_start(void)
+{
+	u32 endian;
+
+	/* DSEC = little endian, DRES = 1, DEN = 0 */
+	endian = readl(MODEMR) & MODEMR_ENDIAN_LITTLE;
+	endian = (endian) ? 0x00000000u : 0x00100000u;
+	writel(0x00000200 | endian, DSYSR);
+
+	/* CSPM = 1 */
+	writel(0x01000000u, DSMR);
+
+	/* DCLKSEL = 1, FRQSEL = 2 (DOTCLK = 66.667MHz) */
+	writel(0x00100002u, ESCR);
+
+	/* 1280x768@60Hz (DOTCLOCK = 65MHz) */
+	writel(277u, HDSR);
+	writel(1301u, HDER);
+	writel(27u, VDSR);
+	writel(795u, VDER);
+	writel(1343u, HCR);
+	writel(135u, HSWR);
+	writel(805u, VCR);
+	writel(799u, VSPR);
+
+	/* irrelevant */
+	writel(0u, EQWR);
+	writel(0u, SPWR);
+	writel(0u, CLAMPSR);
+	writel(0u, CLAMPWR);
+	writel(0u, DESR);
+	writel(0u, DEWR);
+	writel(0u, CDER);
+	writel(0u, RINTOFSR);
+	writel(0u, OTAR);
+
+	/* background color */
+	writel(0u, DOOR);
+#if defined(CONFIG_DISPLAY_BG_COLOR)
+	writel(CONFIG_DISPLAY_BG_COLOR & COLOR_MASK, BPOR);
+#else /* defined(CONFIG_DISPLAY_BG_COLOR) */
+	writel(0u, BPOR);
+#endif /* defined(CONFIG_DISPLAY_BG_COLOR) */
+
+	/* plane priority */
+	writel(0x76543210u, DPPR);
+
+	/* display start */
+	writel(0x00000100 | endian, DSYSR);
+}
 
 int checkboard(void)
 {
@@ -90,12 +208,14 @@ int board_init(void)
 	/* IRQ0-3_B */
 	WRITE_PFC(0x0000040Du, GPSR5);
 
-
 	{
 		u32 sts, ctl;
 
 		ctl = sts = readl(MSTPSR1);
+#if defined(CONFIG_SH_DU)
 		ctl &= ~MSTPSR1_DU;
+#endif /* defined(CONFIG_SH_DU) */
+
 #if defined(CONFIG_SH_ETHER)
 		ctl &= ~MSTPSR1_GETHER;
 #endif /* defined(CONFIG_SH_ETHER) */
@@ -117,6 +237,10 @@ int board_late_init(void)
 	writel(((u32)mac[0] << 24) | ((u32)mac[1] << 16) |
 		((u32)mac[2] << 8) | ((u32)mac[3] << 0), MAHR0);
 	writel(((u32)mac[4] << 8) | ((u32)mac[5] << 0), MALR0);
+
+#ifdef CONFIG_SH_DU
+	du_start();
+#endif /* CONFIG_SH_DU */
 
 	return 0;
 }
