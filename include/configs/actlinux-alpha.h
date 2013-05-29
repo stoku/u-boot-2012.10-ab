@@ -133,6 +133,14 @@
  */
 #undef  CONFIG_SYS_DIRECT_FLASH_TFTP
 
+/* MTD partition list */
+#define MTDPARTS_DEFAULT		"mtdparts=physmap-flash.0:" \
+					"256k(u-boot)ro," \
+					"256k(u-boot-env)ro," \
+					"1536k(splash)," \
+					"8m(kernel)," \
+					"-(local)"
+
 /******************************************************************************
  * SDRAM
  */
@@ -266,7 +274,15 @@
 
 #define CONFIG_SH_DU
 
+#define CONFIG_DISPLAY_WIDTH		1024
+#define CONFIG_DISPLAY_HEIGHT		768
 #define CONFIG_DISPLAY_BG_COLOR		0x00008040 /* XRGB8888 */
+
+#define CONFIG_DISPLAY_IMAGE_DATA_ADDR	0xA0080000
+#define CONFIG_DISPLAY_IMAGE_LOAD_ADDR	0xAB000000
+#define CONFIG_DISPLAY_IMAGE_FORMAT	565
+#define CONFIG_DISPLAY_IMAGE_WIDTH	640
+#define CONFIG_DISPLAY_IMAGE_HEIGHT	400
 
 /******************************************************************************
  * U-boot
@@ -428,14 +444,6 @@
  * (for example, some LED's) on your board.
  */
 #undef  CONFIG_SHOW_BOOT_PROGRESS
-
-/* MTD partitions passed to Linux kernel */
-#define MTDPARTS_DEFAULT		"mtdparts=physmap-flash.0:" \
-					"256k(u-boot)ro," \
-					"256k(u-boot-env)ro," \
-					"1536k(splash)," \
-					"8m(kernel)," \
-					"-(local)"
 
 /******************************************************************************
  * Commands

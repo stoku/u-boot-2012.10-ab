@@ -47,6 +47,7 @@
 #define DIER			DU_REG(0x0010)
 #define CPCR			DU_REG(0x0014)
 #define DPPR			DU_REG(0x0018)
+#define DEFR2			DU_REG(0x0034)
 
 /* DU display timing */
 #define HDSR			DU_REG(0x0040)
@@ -72,7 +73,7 @@
 #define COLOR_MASK		(0x00FCFCFC)
 
 /* DU display planes */
-#define DU_PLANE(i, offset)	DU_REG(((i) * 0x100) + (offset))
+#define DU_PLANE(i, offset)	DU_REG((((i) + 1) * 0x100) + (offset))
 #define PMR(i)			DU_PLANE(i, 0x00)
 #define PMWR(i)			DU_PLANE(i, 0x04)
 #define PALPHAR(i)		DU_PLANE(i, 0x08)
@@ -83,8 +84,8 @@
 #define PDSA0R(i)		DU_PLANE(i, 0x20)
 #define PDSA1R(i)		DU_PLANE(i, 0x24)
 #define PDSA2R(i)		DU_PLANE(i, 0x28)
-#define PDSPXR(i)		DU_PLANE(i, 0x30)
-#define PDSPYR(i)		DU_PLANE(i, 0x34)
+#define PSPXR(i)		DU_PLANE(i, 0x30)
+#define PSPYR(i)		DU_PLANE(i, 0x34)
 #define PWASPR(i)		DU_PLANE(i, 0x38)
 #define PWAMWR(i)		DU_PLANE(i, 0x3C)
 #define PBTR(i)			DU_PLANE(i, 0x40)
@@ -97,13 +98,30 @@
 
 /* DU external synchronization control */
 #define ESCR			DU_REG(0x10000)
+#define ESCR_DCLKSEL		(0x01 << 20)
+#define ESCR_FRQSEL(i)		((i) - 1)
 #define OTAR			DU_REG(0x10004)
+
+#define SIZE(x, y)		(((x) << 16) | (y))
 
 DECLARE_GLOBAL_DATA_PTR;
 
-void du_start(void)
+static void mac_set(void)
 {
-	u32 endian;
+	u8 mac[6];
+
+	if (!eth_getenv_enetaddr("ethaddr", mac)) {
+		eth_random_enetaddr(mac);
+		eth_setenv_enetaddr("ethaddr", mac);
+	}
+	writel(((u32)mac[0] << 24) | ((u32)mac[1] << 16) |
+		((u32)mac[2] << 8) | ((u32)mac[3] << 0), MAHR0);
+	writel(((u32)mac[4] << 8) | ((u32)mac[5] << 0), MALR0);
+}
+
+static void du_start(void)
+{
+	u32 endian, dw, dh;
 
 	/* DSEC = little endian, DRES = 1, DEN = 0 */
 	endian = readl(MODEMR) & MODEMR_ENDIAN_LITTLE;
@@ -113,29 +131,97 @@ void du_start(void)
 	/* CSPM = 1 */
 	writel(0x01000000u, DSMR);
 
-	/* DCLKSEL = 1, FRQSEL = 2 (DOTCLK = 66.667MHz) */
-	writel(0x00100002u, ESCR);
+	/* DEFE2G = 1 */
+	writel(0x77750001, DEFR2);
 
-	/* 1280x768@60Hz (DOTCLOCK = 65MHz) */
-	writel(277u, HDSR);
-	writel(1301u, HDER);
-	writel(27u, VDSR);
-	writel(795u, VDER);
-	writel(1343u, HCR);
-	writel(135u, HSWR);
-	writel(805u, VCR);
-	writel(799u, VSPR);
+	dw = 0;
+	dh = 0;
 
-	/* irrelevant */
-	writel(0u, EQWR);
-	writel(0u, SPWR);
-	writel(0u, CLAMPSR);
-	writel(0u, CLAMPWR);
-	writel(0u, DESR);
-	writel(0u, DEWR);
-	writel(0u, CDER);
-	writel(0u, RINTOFSR);
-	writel(0u, OTAR);
+	/* setup display timing registers */
+	{
+		u32 dotclk, hds, hde, vds, vde, hc, hsw, vc, vsp;
+
+#if defined(CONFIG_DISPLAY_WIDTH)
+		dw = CONFIG_DISPLAY_WIDTH;
+#endif
+
+#if defined(CONFIG_DISPLAY_HEIGHT)
+		dh = CONFIG_DISPLAY_HEIGHT;
+#endif
+
+		switch(SIZE(dw, dh)) {
+		case SIZE(640, 480): /* 640x480@60Hz */
+			dotclk	= 25175000; /* 25.175MHz */
+			hds	= 125;
+			hde	= 765;
+			vds	= 31;
+			vde	= 511;
+			hc	= 799;
+			hsw	= 95;
+			vc	= 524;
+			vsp	= 522;
+			break;
+		case SIZE(800, 600): /* 800x600@60Hz */
+			dotclk	= 40000000; /* 40MHz */
+			hds	= 197;
+			hde	= 997;
+			vds	= 21;
+			vde	= 621;
+			hc	= 1055;
+			hsw	= 127;
+			vc	= 627;
+			vsp	= 623;
+			break;
+		case SIZE(1280, 768): /* 1280x768@60Hz */
+			dotclk	= 68250000; /* 68.25MHz */
+			hds	= 93;
+			hde	= 1373;
+			vds	= 10;
+			vde	= 778;
+			hc	= 1439;
+			hsw	= 31;
+			vc	= 789;
+			vsp	= 782;
+			break;
+		case SIZE(1028, 768):
+		default:
+			dotclk	= 65000000; /* 65MHz */
+			hds	= 277;
+			hde	= 1301;
+			vds	= 27;
+			vde	= 795;
+			hc	= 1343;
+			hsw	= 135;
+			vc	= 805;
+			vsp	= 799;
+			dw	= 1024;
+			dh	= 768;
+			break;
+		}
+
+		dotclk = (200000000 + (dotclk / 2)) / dotclk; /* freq div */
+		writel(ESCR_DCLKSEL | ESCR_FRQSEL(dotclk), ESCR);
+
+		writel(hds, HDSR);
+		writel(hde, HDER);
+		writel(vds, VDSR);
+		writel(vde, VDER);
+		writel(hc, HCR);
+		writel(hsw, HSWR);
+		writel(vc, VCR);
+		writel(vsp, VSPR);
+
+		/* irrelevant */
+		writel(0u, EQWR);
+		writel(0u, SPWR);
+		writel(0u, CLAMPSR);
+		writel(0u, CLAMPWR);
+		writel(0u, DESR);
+		writel(0u, DEWR);
+		writel(0u, CDER);
+		writel(0u, RINTOFSR);
+		writel(0u, OTAR);
+	}
 
 	/* background color */
 	writel(0u, DOOR);
@@ -145,9 +231,58 @@ void du_start(void)
 	writel(0u, BPOR);
 #endif /* defined(CONFIG_DISPLAY_BG_COLOR) */
 
-	/* plane priority */
-	writel(0x76543210u, DPPR);
+#if defined(CONFIG_DISPLAY_IMAGE_DATA_ADDR) && \
+	defined(CONFIG_DISPLAY_IMAGE_LOAD_ADDR)
+	/* setup plane registers */
+	{
+		u32 plane, addr, mode, iw, ih, i;
+		u16 *dst, *src;
 
+		plane = 7; /* use plane 7 (zero based index) */
+
+		mode = 0x00005000; /* PnSPIM = 5 (no colorkey, blend) */
+#if defined(CONFIG_DISPLAY_IMAGE_FORMAT) && \
+	(CONFIG_DISPLAY_IMAGE_FORMAT == 1555)
+		mode |= 0x00000002; /* PnDDF = ARGB1555 */
+#else
+		mode |= 0x00000001; /* PnDDF = RGB565 */
+#endif
+
+#if defined(CONFIG_DISPLAY_IMAGE_WIDTH)
+		iw = CONFIG_DISPLAY_IMAGE_WIDTH;
+#else
+		iw = dw;
+#endif
+
+#if defined(CONFIG_DISPLAY_IMAGE_HEIGHT)
+		ih = CONFIG_DISPLAY_IMAGE_HEIGHT;
+#else
+		ih = dh;
+#endif
+
+		addr = CONFIG_DISPLAY_IMAGE_LOAD_ADDR & 0x1FFFFFFF;
+		dst  = (u16*)CONFIG_DISPLAY_IMAGE_LOAD_ADDR;
+		src  = (u16*)CONFIG_DISPLAY_IMAGE_DATA_ADDR;
+		for (i = 0; i < (iw * ih); i++)
+			dst[i] = src[i];
+		
+		writel(mode, PMR(plane));
+		writel(iw, PMWR(plane));
+		writel(iw, PDSXR(plane));
+		writel(ih, PDSYR(plane));
+		writel((iw < dw) ? (dw - iw) / 2 : 0, PDPXR(plane));
+		writel((ih < dh) ? (dh - ih) / 2 : 0, PDPYR(plane));
+		writel((iw > dw) ? (iw - dw) / 2 : 0, PSPXR(plane));
+		writel((ih > dw) ? (ih - dh) / 2 : 0, PSPYR(plane));
+		writel(0, PWASPR(plane));
+		writel(ih, PWAMWR(plane));
+		writel(addr, PDSA0R(plane));
+		writel(0x000000FF, PALPHAR(plane));
+
+		/* plane priority and visibility */
+		writel((0x8 | plane) << (4 * plane), DPPR);
+	}
+#endif
 	/* display start */
 	writel(0x00000100 | endian, DSYSR);
 }
@@ -228,16 +363,7 @@ int board_init(void)
 
 int board_late_init(void)
 {
-	u8 mac[6];
-
-	if (!eth_getenv_enetaddr("ethaddr", mac)) {
-		eth_random_enetaddr(mac);
-		eth_setenv_enetaddr("ethaddr", mac);
-	}
-	writel(((u32)mac[0] << 24) | ((u32)mac[1] << 16) |
-		((u32)mac[2] << 8) | ((u32)mac[3] << 0), MAHR0);
-	writel(((u32)mac[4] << 8) | ((u32)mac[5] << 0), MALR0);
-
+	mac_set();
 #ifdef CONFIG_SH_DU
 	du_start();
 #endif /* CONFIG_SH_DU */
