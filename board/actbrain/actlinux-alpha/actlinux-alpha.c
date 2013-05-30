@@ -235,8 +235,7 @@ static void du_start(void)
 	defined(CONFIG_DISPLAY_IMAGE_LOAD_ADDR)
 	/* setup plane registers */
 	{
-		u32 plane, addr, mode, iw, ih, i;
-		u16 *dst, *src;
+		u32 plane, addr, mode, iw, ih;
 
 		plane = 7; /* use plane 7 (zero based index) */
 
@@ -261,11 +260,10 @@ static void du_start(void)
 #endif
 
 		addr = CONFIG_DISPLAY_IMAGE_LOAD_ADDR & 0x1FFFFFFF;
-		dst  = (u16*)CONFIG_DISPLAY_IMAGE_LOAD_ADDR;
-		src  = (u16*)CONFIG_DISPLAY_IMAGE_DATA_ADDR;
-		for (i = 0; i < (iw * ih); i++)
-			dst[i] = src[i];
-		
+		memcpy((void*)CONFIG_DISPLAY_IMAGE_LOAD_ADDR,
+			(void*)CONFIG_DISPLAY_IMAGE_DATA_ADDR,
+			2 * iw * ih);
+
 		writel(mode, PMR(plane));
 		writel(iw, PMWR(plane));
 		writel(iw, PDSXR(plane));
