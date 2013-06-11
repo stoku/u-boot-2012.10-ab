@@ -280,9 +280,6 @@
 
 #define CONFIG_DISPLAY_IMAGE_DATA_ADDR	0x80080000
 #define CONFIG_DISPLAY_IMAGE_LOAD_ADDR	0xAB000000
-#define CONFIG_DISPLAY_IMAGE_FORMAT	565
-#define CONFIG_DISPLAY_IMAGE_WIDTH	640
-#define CONFIG_DISPLAY_IMAGE_HEIGHT	400
 
 /******************************************************************************
  * U-boot

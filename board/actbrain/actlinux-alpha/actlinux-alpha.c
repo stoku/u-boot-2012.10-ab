@@ -104,6 +104,9 @@
 
 #define SIZE(x, y)		(((x) << 16) | (y))
 
+#define VERSION_NUMBER(major, minor)	(((major) << 16) | ((minor) << 8))
+#define VERSION_MASK(v)			((v) & 0xFFFFFF00)
+
 DECLARE_GLOBAL_DATA_PTR;
 
 static void mac_set(void)
@@ -235,34 +238,38 @@ static void du_start(void)
 	defined(CONFIG_DISPLAY_IMAGE_LOAD_ADDR)
 	/* setup plane registers */
 	{
-		u32 plane, addr, mode, iw, ih;
+		u32 plane, *src, mode, iw, ih, addr;
 
 		plane = 7; /* use plane 7 (zero based index) */
 
-		mode = 0x00005000; /* PnSPIM = 5 (no colorkey, blend) */
-#if defined(CONFIG_DISPLAY_IMAGE_FORMAT) && \
-	(CONFIG_DISPLAY_IMAGE_FORMAT == 1555)
-		mode |= 0x00000002; /* PnDDF = ARGB1555 */
-#else
-		mode |= 0x00000001; /* PnDDF = RGB565 */
-#endif
+		src = (u32 *)CONFIG_DISPLAY_IMAGE_DATA_ADDR;
+		if (strncmp((char *)src, "spim", 4)) {
+			printf("Splash Image: invalid magic data\n");
+			goto skip_image;
+		}
+		if (VERSION_MASK(src[1]) != VERSION_NUMBER(1, 0)) {
+			printf("Splash Image: invalid version\n");
+			goto skip_image;
+		}
 
-#if defined(CONFIG_DISPLAY_IMAGE_WIDTH)
-		iw = CONFIG_DISPLAY_IMAGE_WIDTH;
-#else
-		iw = dw;
-#endif
+		switch (src[2]) {
+		case 565:
+			mode = 0x00000001; /* PnDDF = RGB565 */
+			break;
+		case 1555:
+			mode = 0x00000002; /* PnDDF = ARGB1555 */
+			break;
+		default:
+			printf("Splash Image: invalid pixel format\n");
+			goto skip_image;
+		}
+		mode |= 0x00005000; /* PnSPIM = 5 (no colorkey, blend) */
 
-#if defined(CONFIG_DISPLAY_IMAGE_HEIGHT)
-		ih = CONFIG_DISPLAY_IMAGE_HEIGHT;
-#else
-		ih = dh;
-#endif
-
-		addr = CONFIG_DISPLAY_IMAGE_LOAD_ADDR & 0x1FFFFFFF;
+		iw   = src[3];
+		ih   = src[4];
 		memcpy((void*)CONFIG_DISPLAY_IMAGE_LOAD_ADDR,
-			(void*)CONFIG_DISPLAY_IMAGE_DATA_ADDR,
-			2 * iw * ih);
+			(void*)&src[5], 2 * iw * ih);
+		addr = CONFIG_DISPLAY_IMAGE_LOAD_ADDR & 0x1FFFFFFF;
 
 		writel(mode, PMR(plane));
 		writel(iw, PMWR(plane));
@@ -280,6 +287,7 @@ static void du_start(void)
 		/* plane priority and visibility */
 		writel((0x8 | plane) << (4 * plane), DPPR);
 	}
+skip_image:
 #endif
 	/* display start */
 	writel(0x00000100 | endian, DSYSR);
