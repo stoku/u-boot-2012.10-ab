@@ -244,7 +244,7 @@ static void du_start(void)
 
 		src = (u32 *)CONFIG_DISPLAY_IMAGE_DATA_ADDR;
 		if (strncmp((char *)src, "spim", 4)) {
-			printf("Splash Image: invalid magic data\n");
+			printf("Splash Image: invalid signature\n");
 			goto skip_image;
 		}
 		if (VERSION_MASK(src[1]) != VERSION_NUMBER(1, 0)) {
