@@ -16,6 +16,7 @@
 #include <common.h>
 #include <asm/processor.h>
 #include <asm/io.h>
+#include <asm/cache.h>
 #include <net.h>
 
 #define WRITE_PFC(d, a)	\
@@ -107,6 +108,13 @@
 #define VERSION_NUMBER(major, minor)	(((major) << 16) | ((minor) << 8))
 #define VERSION_MASK(v)			((v) & 0xFFFFFF00)
 
+#define SWAB16(d)		((((d) & (u16)0x00FFu) << 8) | \
+				 (((d) & (u16)0xFF00u) >> 8))
+#define SWAB32(d)		((((d) & (u32)0x000000FFul) << 24) | \
+				 (((d) & (u32)0x0000FF00ul) <<  8) | \
+				 (((d) & (u32)0x00FF0000ul) >>  8) | \
+				 (((d) & (u32)0xFF000000ul) >> 24))
+
 DECLARE_GLOBAL_DATA_PTR;
 
 static void mac_set(void)
@@ -122,14 +130,33 @@ static void mac_set(void)
 	writel(((u32)mac[4] << 8) | ((u32)mac[5] << 0), MALR0);
 }
 
+static u32 read32(const u32 *addr)
+{
+	return *addr;
+}
+
+static u32 read32swab(const u32 *addr)
+{
+	return SWAB32(*addr);
+}
+
+static u16 read16(const u16 *addr)
+{
+	return *addr;
+}
+
+static u16 read16swab(const u16 *addr)
+{
+	return SWAB16(*addr);
+}
+
 static void du_start(void)
 {
-	u32 endian, dw, dh;
+	u32 be, dw, dh;
 
-	/* DSEC = little endian, DRES = 1, DEN = 0 */
-	endian = readl(MODEMR) & MODEMR_ENDIAN_LITTLE;
-	endian = (endian) ? 0x00000000u : 0x00100000u;
-	writel(0x00000200 | endian, DSYSR);
+	/* DSEC = endian, DRES = 1, DEN = 0 */
+	be = (readl(MODEMR) & MODEMR_ENDIAN_LITTLE) ? 0u : 0x100000u;
+	writel(0x00000200 | be, DSYSR);
 
 	/* CSPM = 1 */
 	writel(0x01000000u, DSMR);
@@ -186,8 +213,11 @@ static void du_start(void)
 			vc	= 789;
 			vsp	= 782;
 			break;
-		case SIZE(1028, 768):
 		default:
+			puts("Display: invalid display size, "
+				"use 1024x768 instead\n");
+			/* fall through */
+		case SIZE(1024, 768):
 			dotclk	= 65000000; /* 65MHz */
 			hds	= 277;
 			hde	= 1301;
@@ -238,21 +268,32 @@ static void du_start(void)
 	defined(CONFIG_DISPLAY_IMAGE_LOAD_ADDR)
 	/* setup plane registers */
 	{
-		u32 plane, *src, mode, iw, ih, addr;
+		u32 mode, iw, ih, is, x, y, plane;
+		const u32 *src32;
+		const u16 *src16;
+		u16 *dst16;
+		u32 (*read32be)(const u32 *);
+		u16 (*read16be)(const u16 *);
 
-		plane = 7; /* use plane 7 (zero based index) */
+		if (be) {
+			read32be = read32;
+			read16be = read16;
+		} else {
+			read32be = read32swab;
+			read16be = read16swab;
+		}
 
-		src = (u32 *)CONFIG_DISPLAY_IMAGE_DATA_ADDR;
-		if (strncmp((char *)src, "spim", 4)) {
-			printf("Splash Image: invalid signature\n");
+		src32 = (const u32 *)CONFIG_DISPLAY_IMAGE_DATA_ADDR;
+		if (strncmp((const char *)src32, "spim", 4)) {
+			puts("Splash Image: invalid signature\n");
 			goto skip_image;
 		}
-		if (VERSION_MASK(src[1]) != VERSION_NUMBER(1, 0)) {
-			printf("Splash Image: invalid version\n");
+		if (VERSION_MASK(read32be(src32 + 1)) != VERSION_NUMBER(1, 0)) {
+			puts("Splash Image: invalid version\n");
 			goto skip_image;
 		}
 
-		switch (src[2]) {
+		switch (read32be(src32 + 2)) {
 		case 565:
 			mode = 0x00000001; /* PnDDF = RGB565 */
 			break;
@@ -260,28 +301,36 @@ static void du_start(void)
 			mode = 0x00000002; /* PnDDF = ARGB1555 */
 			break;
 		default:
-			printf("Splash Image: invalid pixel format\n");
+			puts("Splash Image: invalid pixel format\n");
 			goto skip_image;
 		}
 		mode |= 0x00005000; /* PnSPIM = 5 (no colorkey, blend) */
 
-		iw   = src[3];
-		ih   = src[4];
-		memcpy((void*)CONFIG_DISPLAY_IMAGE_LOAD_ADDR,
-			(void*)&src[5], 2 * iw * ih);
-		addr = CONFIG_DISPLAY_IMAGE_LOAD_ADDR & 0x1FFFFFFF;
+		iw    = read32be(src32 + 3);
+		ih    = read32be(src32 + 4);
+		is    = (iw + 15u) & ~15u; /* stride */
+		src16 = (const u16 *)(src32 + 5);
+		dst16 = (u16 *)CONFIG_DISPLAY_IMAGE_LOAD_ADDR;
+
+		/* P1 is write-through mode and no need to flush cache */
+		for (y = 0; y < ih; y++)
+			for (x = 0; x < iw; x++)
+				dst16[x + (y * is)] =
+					read16be(&src16[x + (y * iw)]);
+
+		plane = 7; /* use plane 7 (zero based index) */
 
 		writel(mode, PMR(plane));
-		writel(iw, PMWR(plane));
-		writel(iw, PDSXR(plane));
-		writel(ih, PDSYR(plane));
+		writel(is, PMWR(plane));
+		writel(MIN(iw, dw), PDSXR(plane));
+		writel(MIN(ih, dh), PDSYR(plane));
 		writel((iw < dw) ? (dw - iw) / 2 : 0, PDPXR(plane));
 		writel((ih < dh) ? (dh - ih) / 2 : 0, PDPYR(plane));
 		writel((iw > dw) ? (iw - dw) / 2 : 0, PSPXR(plane));
 		writel((ih > dw) ? (ih - dh) / 2 : 0, PSPYR(plane));
 		writel(0, PWASPR(plane));
 		writel(ih, PWAMWR(plane));
-		writel(addr, PDSA0R(plane));
+		writel((u32)dst16 & 0x1FFFFFFF, PDSA0R(plane));
 		writel(0x000000FF, PALPHAR(plane));
 
 		/* plane priority and visibility */
@@ -290,7 +339,7 @@ static void du_start(void)
 skip_image:
 #endif
 	/* display start */
-	writel(0x00000100 | endian, DSYSR);
+	writel(0x00000100 | be, DSYSR);
 }
 
 int checkboard(void)
@@ -379,7 +428,7 @@ int board_late_init(void)
 
 int dram_init(void)
 {
-	printf("DRAM:	%luMB\n", gd->bd->bi_memsize / (1024u * 1024u));
+	printf("DRAM:  %luMB\n", gd->bd->bi_memsize / (1024u * 1024u));
 	return 0;
 }
 

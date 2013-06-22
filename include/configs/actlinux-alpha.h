@@ -279,7 +279,7 @@
 #define CONFIG_DISPLAY_BG_COLOR		0x00008040 /* XRGB8888 */
 
 #define CONFIG_DISPLAY_IMAGE_DATA_ADDR	0x80080000
-#define CONFIG_DISPLAY_IMAGE_LOAD_ADDR	0xAB000000
+#define CONFIG_DISPLAY_IMAGE_LOAD_ADDR	0x8B000000
 
 /******************************************************************************
  * U-boot
