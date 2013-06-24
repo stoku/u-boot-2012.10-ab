@@ -87,7 +87,7 @@
  */
 
 /* static uchar rtc_read (uchar reg); */
-#define rtc_read(reg) buf[((reg) + 1) & 0xf]
+#define rtc_read(reg) buf[(reg) & 0xf]
 
 static void rtc_write (uchar reg, uchar val);
 
@@ -216,10 +216,7 @@ void rtc_reset (void)
  */
 static void rtc_write (uchar reg, uchar val)
 {
-	uchar buf[2];
-	buf[0] = reg << 4;
-	buf[1] = val;
-	if (i2c_write(CONFIG_SYS_I2C_RTC_ADDR, 0, 0, buf, 2) != 0)
+	if (i2c_write(CONFIG_SYS_I2C_RTC_ADDR, reg << 4, 0, &val, 1) != 0)
 		printf("Error writing to RTC\n");
 
 }

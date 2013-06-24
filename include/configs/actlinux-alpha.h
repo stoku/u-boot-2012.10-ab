@@ -248,7 +248,7 @@
  */
 
 /* Select a hardware I2C controller */
-#define CONFIG_HARD_I2C		1
+#define CONFIG_HARD_I2C			1
 
 /*
  * This option allows the use of multiple I2C buses, each of which
@@ -256,17 +256,23 @@
  * active. To switch to a different bus, use the 'i2c dev' command.
  * Note that bus numbering is zero-based.
  */
-#define CONFIG_I2C_MULTI_BUS	1
+#define CONFIG_I2C_MULTI_BUS		1
 
-#define CONFIG_SYS_MAX_I2C_BUS	2
-#define CONFIG_SYS_I2C_MODULE	0
-#define CONFIG_SYS_I2C_SPEED	400000 /* 400 kHz */
-#define CONFIG_SYS_I2C_SLAVE	0x50
-#define CONFIG_SH_SH7734_I2C	1
-#define CONFIG_SH_I2C_DATA_HIGH	4
-#define CONFIG_SH_I2C_DATA_LOW	5
-#define CONFIG_SH_I2C_BASE0	0xFFC70000
-#define CONFIG_SH_I2C_BASE1	0xFFC71000
+#define CONFIG_SYS_MAX_I2C_BUS		2
+#define CONFIG_SYS_I2C_MODULE		0
+#define CONFIG_SYS_I2C_SPEED		100000 /* 100 kHz (standard mode) */
+#define CONFIG_SYS_I2C_SLAVE		CONFIG_SYS_I2C_RTC_ADDR
+#define CONFIG_SH_SH7734_I2C		1
+#define CONFIG_SH_I2C_CLOCK		CONFIG_SYS_CLK_FREQ
+#define CONFIG_SH_I2C_BASE0		0xFFC70000
+#define CONFIG_SH_I2C_BASE1		0xFFC71000
+
+/******************************************************************************
+ * RTC
+ */
+
+#define CONFIG_RTC_RX8025		1
+#define CONFIG_SYS_I2C_RTC_ADDR		0x32
 
 /******************************************************************************
  * Display
@@ -460,9 +466,11 @@
 #define CONFIG_CMD_NFS
 /* I2C serial bus support */
 #define CONFIG_CMD_I2C
+/* date */
+#define CONFIG_CMD_DATE
 /* print SDRAM configuration information (requires CONFIG_CMD_I2C) */
 #define CONFIG_CMD_SDRAM
-/* env ??? */
+/* printenv, setenv */
 #define CONFIG_CMD_ENV
 /* saveenv */
 #define CONFIG_CMD_SAVEENV

@@ -17,6 +17,8 @@
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <asm/cache.h>
+#include <i2c.h>
+#include <rtc.h>
 #include <net.h>
 
 #define WRITE_PFC(d, a)	\
@@ -122,7 +124,19 @@ static void mac_set(void)
 	u8 mac[6];
 
 	if (!eth_getenv_enetaddr("ethaddr", mac)) {
-		eth_random_enetaddr(mac);
+		unsigned int rval;
+
+		rval = rand();
+		mac[0] = (rval >>  0) & 0xff;
+		mac[1] = (rval >>  8) & 0xff;
+		mac[2] = (rval >> 16) & 0xff;
+		rval = rand();
+		mac[3] = (rval >>  0) & 0xff;
+		mac[4] = (rval >>  8) & 0xff;
+		mac[5] = (rval >> 16) & 0xff;
+		/* make sure it's local and unicast */
+		mac[0] = (mac[0] | 0x02) & ~0x01;
+
 		eth_setenv_enetaddr("ethaddr", mac);
 	}
 	writel(((u32)mac[0] << 24) | ((u32)mac[1] << 16) |
@@ -418,6 +432,23 @@ int board_init(void)
 
 int board_late_init(void)
 {
+	unsigned long seed = 0;
+
+	if (!i2c_probe(CONFIG_SYS_I2C_RTC_ADDR)) {
+		struct rtc_time rt;
+		if(rtc_get(&rt)) {
+			/* need reset */
+			rtc_reset();
+			rtc_get(&rt);
+		}
+		seed = mktime(rt.tm_year, rt.tm_mon, rt.tm_mday,
+				rt.tm_hour, rt.tm_min, rt.tm_sec);
+	}
+
+	/* set random seed to milliseconds from epoch */
+	seed = (seed * 1000) + (get_timer(0) % 1000);
+	srand(seed);
+
 	mac_set();
 #ifdef CONFIG_SH_DU
 	du_start();
