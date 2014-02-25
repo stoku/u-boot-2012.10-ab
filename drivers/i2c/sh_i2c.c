@@ -43,7 +43,8 @@ static struct sh_i2c *base;
 #define SH_I2C_ICCR_SCP		(1 << 0)
 
 /* ICSR / ICIC */
-#define SH_IC_BUSY	(1 << 3)
+#define SH_IC_BUSY	(1 << 4)
+#define SH_IC_AL	(1 << 3)
 #define SH_IC_TACK	(1 << 2)
 #define SH_IC_WAIT	(1 << 1)
 #define SH_IC_DTE	(1 << 0)
@@ -52,95 +53,135 @@ static u8 iccl, icch;
 
 #define IRQ_WAIT 1000
 
-static void irq_dte(struct sh_i2c *base)
+static u8 wait_status(struct sh_i2c *base, u8 bit)
 {
 	int i;
+	u8 sts;
 
-	for (i = 0 ; i < IRQ_WAIT ; i++) {
-		if (SH_IC_DTE & readb(&base->icsr))
-			break;
+	for (i = 0; i < IRQ_WAIT; i++) {
+		sts = readb(&base->icsr);
+		if (sts & (SH_IC_AL | SH_IC_TACK))
+			return 0u;
+		if (sts & bit)
+			return sts;
 		udelay(10);
 	}
+	return 0u;
 }
 
-static void irq_busy(struct sh_i2c *base)
+static int wait_stop(struct sh_i2c *base)
 {
 	int i;
 
 	for (i = 0 ; i < IRQ_WAIT ; i++) {
 		if (!(SH_IC_BUSY & readb(&base->icsr)))
-			break;
+			return 0;
 		udelay(10);
 	}
+	return -1;
 }
 
-static void i2c_set_addr(struct sh_i2c *base, u8 id, u8 reg, int stop)
+static void clr_wait(struct sh_i2c *base, u8 sts)
 {
+	writeb(sts & ~SH_IC_WAIT, &base->icsr);
+}
+
+static u8 i2c_set_addr(struct sh_i2c *base, u8 id, u8 reg)
+{
+	u8 sts;
+
 	writeb(readb(&base->iccr) & ~SH_I2C_ICCR_ICE, &base->iccr);
 	writeb(readb(&base->iccr) | SH_I2C_ICCR_ICE, &base->iccr);
 
 	writeb(iccl, &base->iccl);
 	writeb(icch, &base->icch);
-	writeb(0, &base->icic);
+	writeb(SH_IC_AL|SH_IC_TACK|SH_IC_WAIT, &base->icic);
 
 	writeb((SH_I2C_ICCR_ICE|SH_I2C_ICCR_RTS|SH_I2C_ICCR_BUSY), &base->iccr);
-	irq_dte(base);
 
+	if (!(sts = wait_status(base, SH_IC_DTE))) goto out;
 	writeb(id << 1, &base->icdr);
-	irq_dte(base);
 
+	if (!(sts = wait_status(base, SH_IC_WAIT))) goto out;
 	writeb(reg, &base->icdr);
-	if (stop)
-		writeb((SH_I2C_ICCR_ICE|SH_I2C_ICCR_RTS), &base->iccr);
-
-	irq_dte(base);
+out:
+	return sts;
 }
 
 static void i2c_finish(struct sh_i2c *base)
 {
+	writeb(0, &base->icic);
 	writeb(0, &base->icsr);
 	writeb(readb(&base->iccr) & ~SH_I2C_ICCR_ICE, &base->iccr);
 }
 
-static void i2c_raw_write(struct sh_i2c *base, u8 id, u8 reg, u8 val)
+static int i2c_raw_write(struct sh_i2c *base, u8 id, u8 reg, u8 *val, int size)
 {
-	i2c_set_addr(base, id, reg, 0);
-	udelay(10);
+	int i = 0, ret = -1;
+	u8 sts = i2c_set_addr(base, id, reg);
 
-	writeb(val, &base->icdr);
-	irq_dte(base);
+	while (sts && i < size) {
+		clr_wait(base, sts);
+		sts = wait_status(base, SH_IC_WAIT);
+		if (sts) writeb(val[i++], &base->icdr);
+	}
 
-	writeb((SH_I2C_ICCR_ICE | SH_I2C_ICCR_RTS), &base->iccr);
-	irq_dte(base);
-	irq_busy(base);
-
+	if (!sts) goto out;
+	writeb((SH_I2C_ICCR_ICE|SH_I2C_ICCR_RTS), &base->iccr);
+	clr_wait(base, sts);
+	if (!(sts = wait_status(base, SH_IC_WAIT))) goto out;
+	clr_wait(base, sts);
+	if (wait_stop(base)) goto out;
+	ret = 0;
+out:
 	i2c_finish(base);
+	return ret;
 }
 
-static u8 i2c_raw_read(struct sh_i2c *base, u8 id, u8 reg)
+static int i2c_raw_read(struct sh_i2c *base, u8 id, u8 reg, u8 *val, int size)
 {
-	u8 ret;
+	int i = 0, ret = -1;
+	u8 sts = i2c_set_addr(base, id, reg);
 
-	i2c_set_addr(base, id, reg, 1);
-	udelay(100);
-
+	if (!sts) goto out;
 	writeb((SH_I2C_ICCR_ICE|SH_I2C_ICCR_RTS|SH_I2C_ICCR_BUSY), &base->iccr);
-	irq_dte(base);
-
+	clr_wait(base, sts);
+	if (!(sts = wait_status(base, SH_IC_WAIT))) goto out;
+	clr_wait(base, sts);
+	if (!(sts = wait_status(base, SH_IC_DTE))) goto out;
 	writeb(id << 1 | 0x01, &base->icdr);
-	irq_dte(base);
 
+	if (!(sts = wait_status(base, SH_IC_WAIT))) goto out;
 	writeb((SH_I2C_ICCR_ICE|SH_I2C_ICCR_SCP), &base->iccr);
-	irq_dte(base);
+	clr_wait(base, sts);
 
-	ret = readb(&base->icdr);
+	while (i < size - 1) {
+		sts = wait_status(base, SH_IC_WAIT | SH_IC_DTE);
+		if (sts & SH_IC_DTE)
+			val[i++] = readb(&base->icdr);
+		else if (sts & SH_IC_WAIT)
+			clr_wait(base, sts);
+		else
+			goto out;
+	}
 
+	if (!(sts = wait_status(base, SH_IC_WAIT))) goto out;
 	writeb((SH_I2C_ICCR_ICE|SH_I2C_ICCR_RACK), &base->iccr);
-	readb(&base->icdr); /* Dummy read */
-	irq_busy(base);
+	clr_wait(base, sts);
 
+	while (i < size) {
+		sts = wait_status(base, SH_IC_WAIT | SH_IC_DTE);
+		if (sts & SH_IC_DTE)
+			val[i++] = readb(&base->icdr);
+		else if (sts & SH_IC_WAIT)
+			clr_wait(base, sts);
+		else
+			goto out;
+	}
+	if (wait_stop(base)) goto out;
+	ret = 0;
+out:
 	i2c_finish(base);
-
 	return ret;
 }
 
@@ -235,11 +276,7 @@ void i2c_init(int speed, int slaveaddr)
  */
 int i2c_read(u8 chip, u32 addr, int alen, u8 *buffer, int len)
 {
-	int i = 0;
-	for (i = 0 ; i < len ; i++)
-		buffer[i] = i2c_raw_read(base, chip, addr + i);
-
-	return 0;
+	return i2c_raw_read(base, chip, addr, buffer, len);
 }
 
 /*
@@ -257,11 +294,7 @@ int i2c_read(u8 chip, u32 addr, int alen, u8 *buffer, int len)
  */
 int i2c_write(u8 chip, u32 addr, int alen, u8 *buffer, int len)
 {
-	int i = 0;
-	for (i = 0; i < len ; i++)
-		i2c_raw_write(base, chip, addr + i, buffer[i]);
-
-	return 0;
+	return i2c_raw_write(base, chip, addr, buffer, len);
 }
 
 /*
@@ -272,5 +305,5 @@ int i2c_write(u8 chip, u32 addr, int alen, u8 *buffer, int len)
  */
 int i2c_probe(u8 chip)
 {
-	return 0;
+	return i2c_raw_write(base, chip, 0, NULL, 0);
 }

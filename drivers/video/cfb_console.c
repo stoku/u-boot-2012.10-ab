@@ -1916,6 +1916,8 @@ int drv_video_init(void)
 	/* Init video chip - returns with framebuffer cleared */
 	skip_dev_init = (video_init() == -1);
 
+#ifdef CONFIG_CFB_CONSOLE
+
 #if !defined(CONFIG_VGA_AS_SINGLE_DEVICE)
 	debug("KBD: Keyboard init ...\n");
 	skip_dev_init |= (VIDEO_KBD_INIT_FCT == -1);
@@ -1943,6 +1945,7 @@ int drv_video_init(void)
 
 	if (stdio_register(&console_dev) != 0)
 		return 0;
+#endif /* CONFIG_CFB_CONSOLE */
 
 	/* Return success */
 	return 1;

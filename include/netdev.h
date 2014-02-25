@@ -47,6 +47,7 @@ int altera_tse_initialize(u8 dev_num, int mac_base,
 int at91emac_register(bd_t *bis, unsigned long iobase);
 int au1x00_enet_initialize(bd_t*);
 int ax88180_initialize(bd_t *bis);
+int ax88796b_initialize(bd_t *bis);
 int bfin_EMAC_initialize(bd_t *bis);
 int calxedaxgmac_initialize(u32 id, ulong base_addr);
 int cs8900_initialize(u8 dev_num, int base_addr);

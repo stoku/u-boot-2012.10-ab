@@ -198,6 +198,7 @@ void rtc_reset (void)
 	tmp.tm_year = 1970;
 	tmp.tm_mon = 1;
 	tmp.tm_mday= 1;
+	tmp.tm_wday = 3;
 	tmp.tm_hour = 0;
 	tmp.tm_min = 0;
 	tmp.tm_sec = 0;
@@ -216,9 +217,9 @@ void rtc_reset (void)
  */
 static void rtc_write (uchar reg, uchar val)
 {
+	udelay(62);
 	if (i2c_write(CONFIG_SYS_I2C_RTC_ADDR, reg << 4, 0, &val, 1) != 0)
 		printf("Error writing to RTC\n");
-
 }
 
 #endif /* CONFIG_RTC_RX8025 && CONFIG_CMD_DATE */
