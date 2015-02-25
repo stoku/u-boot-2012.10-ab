@@ -54,14 +54,16 @@ static inline unsigned short get_reg16 (struct eth_device *dev, unsigned int reg
 	return (*((volatile unsigned short *)(dev->iobase + regno)));
 }
 
-static inline void put_reg (struct eth_device *dev, unsigned int regno, unsigned char val)
-{
-	*((volatile unsigned char *)(dev->iobase + regno)) = val;
-}
-
 static inline void put_reg16 (struct eth_device *dev, unsigned int regno, unsigned short val)
 {
 	*((volatile unsigned short *)(dev->iobase + regno)) = val;
+}
+
+static inline void put_reg (struct eth_device *dev, unsigned int regno, unsigned char val)
+{
+	// WARNING: this makes the driver not working on other than ActLinux board. 
+	//*((volatile unsigned char *)(dev->iobase + regno)) = val;
+	put_reg16(dev, regno, (unsigned short)val);
 }
 
 static void ax88796b_reset (struct eth_device *dev)

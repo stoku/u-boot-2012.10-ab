@@ -91,7 +91,7 @@
 #define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE }
 
 /* Max number of sectors on a Flash chip */
-#define CONFIG_SYS_MAX_FLASH_SECT	256
+#define CONFIG_SYS_MAX_FLASH_SECT	512
 
 /* Timeout for Flash erase operations (in ms) */
 #define CONFIG_SYS_FLASH_ERASE_TOUT	3000
@@ -164,7 +164,7 @@
 
 #define CONFIG_SCIF				1
 #define CONFIG_SCIF_CONSOLE			1
-#define CONFIG_CONS_SCIF1			1
+#define CONFIG_CONS_SCIF0			1
 
 /* in bps */
 #define CONFIG_BAUDRATE				115200
@@ -209,7 +209,7 @@
 /* Asix AX88796B ethernet driver */
 #define CONFIG_DRIVER_AX88796B		1
 #define AX88796B_BASE			0xB9000000
-#define AX88796B_REG_SHIFT		0
+#define AX88796B_REG_SHIFT		1
 
 /* Enable random MAC address generation */
 #define CONFIG_RANDOM_MACADDR
@@ -397,7 +397,7 @@
  * command. The value of CONFIG_BOOTARGS goes into the
  * environment value "bootargs".
  */
-#define CONFIG_BOOTARGS		"console=ttySC1,115200 " \
+#define CONFIG_BOOTARGS		"console=ttySC0,115200 " \
 				"root=/dev/ram " \
 				"mem=192M " \
 				MTDPARTS_DEFAULT

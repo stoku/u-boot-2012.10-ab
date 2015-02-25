@@ -79,12 +79,14 @@ static void init_mac(void)
 int board_init(void)
 {
 	/* PFC */
+	writew(0x0040u, PSELA);
 	writew(0x0100u, PSELC);
 	writew(0x0000u, PCCR);
 	writew(0x0000u, PDCR);
 	writew(0xA000u, PECR);
 	writew(0x0000u, PFCR);
 	writew(0xA80Au, PLCR);
+	writew(0xAAA2u, PMCR);
 
 	return 0;
 }
