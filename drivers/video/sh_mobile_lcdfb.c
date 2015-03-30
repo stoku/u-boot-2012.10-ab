@@ -16,6 +16,7 @@
 #include <common.h>
 #include <asm/processor.h>
 #include <asm/io.h>
+#include <addr_map.h>
 #include <video_fb.h>
 #include "videomodes.h"
 
@@ -127,22 +128,27 @@ void *video_hw_init(void)
 	static GraphicDevice gd;
 	const struct ctfb_res_modes *mode = &res_mode_init[CONFIG_VIDEO_RES_MODE];
 	int plane = CONFIG_SH_MOBILE_LCD_PLANE;
-	unsigned int fb = (unsigned int)malloc(CONFIG_VIDEO_FB_SIZE);
+	void *fb_va = CONFIG_VIDEO_FB_ADDR;
+	phys_addr_t fb_pa = addrmap_virt_to_phys(fb_va);
+
+	if (fb_pa == (phys_addr_t)(~0))
+		fb_pa = (phys_addr_t)fb_va;
 
 	writel(readl(MSTPCR2) & ~0x00000001, MSTPCR2);
 
 	if (set_res_mode(plane, mode)) return NULL;
 
+	memset(fb_va, 0, CONFIG_VIDEO_FB_SIZE);
 	writel(0x1800000A, MLDMT1R(plane)); // configure for TFP410
 	writel(0x00000003, MLDDFR(plane)); // RGB565
-	writel(fb & ~0xE0000000, MLDSA1R(plane));
+	writel(fb_pa, MLDSA1R(plane));
 	writel(mode->xres * 2, MLDMLSR(plane));
 	writel(0x00000006, LDDDSR);
 	writel(plane << 1, LDRCNTR);
 	writel(0x03, LDCNT2R);
 
 	memset(&gd, 0, sizeof(gd));
-	gd.frameAdrs = fb;
+	gd.frameAdrs = (unsigned int)fb_va;
 	gd.winSizeX = gd.plnSizeX = mode->xres;
 	gd.winSizeY = gd.plnSizeY = mode->yres;
 	gd.gdfIndex = GDF_16BIT_565RGB;

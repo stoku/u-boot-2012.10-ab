@@ -29,6 +29,9 @@
 #define	CONFIG_SH4		1
 #define	CONFIG_SH4A		1
 
+/* Address mode */
+#define CONFIG_SH_32BIT		1
+
 /* CPU */
 #define CONFIG_CPU_SH7724	1
 
@@ -40,6 +43,12 @@
 
 /* Resolution of system ticks */
 #define CONFIG_SYS_HZ		1000
+
+/* This option enables address map */
+#define CONFIG_ADDR_MAP
+
+/* Number of address map entries */
+#define CONFIG_SYS_NUM_ADDR_MAP	16
 
 /******************************************************************************
  * Board
@@ -65,6 +74,11 @@
 #define CONFIG_FLASH_CFI_DRIVER		1
 
 /*
+ * This option displays progress of flash write
+ */
+#define CONFIG_FLASH_SHOW_PROGRESS	45
+
+/*
  * Define if the flash driver uses extra elements in the
  * common flash structure for storing flash geometry.
  */
@@ -82,7 +96,7 @@
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 
 /* Physical start address of Flash memory */
-#define CONFIG_SYS_FLASH_BASE		(0xA0000000)
+#define CONFIG_SYS_FLASH_BASE		(0xBC000000)
 
 /* Max number of Flash memory banks */
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
@@ -138,10 +152,10 @@
  */
 
 /* Physical start address of SDRAM. */
-#define CONFIG_SYS_SDRAM_BASE		(0x88000000)
+#define CONFIG_SYS_SDRAM_BASE		(0x80000000)
 
 /* Size of SDRAM */
-#define CONFIG_SYS_SDRAM_SIZE		(256 * 1024 * 1024)
+#define CONFIG_SYS_SDRAM_SIZE		(512 * 1024 * 1024)
 
 /*
  * Begin and End addresses of the area used by the simple memory test */
@@ -255,10 +269,15 @@
 //#define CONFIG_VGA_AS_SINGLE_DEVICE
 #define CONFIG_VIDEO
 #define CONFIG_VIDEO_FB_SIZE		(1024 * 768 * 2)
+#define CONFIG_VIDEO_FB_ADDR		(CONFIG_SYS_SDRAM_BASE + \
+					 CONFIG_SYS_SDRAM_SIZE - \
+					 CONFIG_VIDEO_FB_SIZE)
 #define CONFIG_VIDEO_RES_MODE		RES_MODE_1024x768
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_GZIP
-#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(140 + (1024 * 768 * 2))
+
+/* splash image may be 4, 8, 24 bpp */
+#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(140 + (1024 * 768 * 3))
 
 #define CONFIG_SH_MOBILE_LCD		1
 #define CONFIG_SH_MOBILE_LCD_ICKSEL	0u
@@ -290,14 +309,13 @@
 #define CONFIG_SYS_MONITOR_LEN	(256 * 1024)
 
 /* Size of DRAM reserved for malloc() use. */
-#define CONFIG_SYS_MALLOC_LEN	((256 * 1024) + CONFIG_VIDEO_FB_SIZE + CONFIG_SYS_VIDEO_LOGO_MAX_SIZE)
+#define CONFIG_SYS_MALLOC_LEN	((256 * 1024) + CONFIG_SYS_VIDEO_LOGO_MAX_SIZE)
 //#define CONFIG_SYS_MALLOC_LEN	(256 * 1024)
 
 /*
  * Physical address to load boot monitor code
- * (CONFIG_SYS_SDRAM_BASE + CONFIG_SYS_SDRAM_SIZE - CONFIG_SYS_MONITOR_LEN)
  */
-#define CONFIG_SYS_TEXT_BASE	0x97FC0000
+#define CONFIG_SYS_TEXT_BASE	0x8FFC0000
 
 /* Default load address for commands like "tftp" or "loads". */
 #define CONFIG_SYS_LOAD_ADDR	(CONFIG_SYS_SDRAM_BASE + (16 * 1024 * 1024))
@@ -390,7 +408,7 @@
  * when no character is read on the console interface
  * within "Boot Delay" after reset.
  */
-#define CONFIG_BOOTCOMMAND	"bootm a0100000"
+#define CONFIG_BOOTCOMMAND	"bootm 00100000"
 
 /*
  * This can be used to pass arguments to the bootm
@@ -399,7 +417,7 @@
  */
 #define CONFIG_BOOTARGS		"console=ttySC0,115200 " \
 				"root=/dev/ram " \
-				"mem=192M " \
+				"mem=448M " \
 				MTDPARTS_DEFAULT
 
 /*
