@@ -65,6 +65,11 @@
 #define CONFIG_FLASH_CFI_DRIVER		1
 
 /*
+ * This option displays progress of flash write
+ */
+#define CONFIG_FLASH_SHOW_PROGRESS	45
+
+/*
  * Define if the flash driver uses extra elements in the
  * common flash structure for storing flash geometry.
  */
@@ -258,7 +263,9 @@
 #define CONFIG_VIDEO_RES_MODE		RES_MODE_1024x768
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_GZIP
-#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(140 + (1024 * 768 * 2))
+
+/* splash image may be 4, 8, 24 bpp */
+#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(140 + (1024 * 768 * 3))
 
 #define CONFIG_SH_MOBILE_LCD		1
 #define CONFIG_SH_MOBILE_LCD_ICKSEL	0u
